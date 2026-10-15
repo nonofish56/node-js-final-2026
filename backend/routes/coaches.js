@@ -7,9 +7,11 @@ const { getSkills } = require('../controllers/coaches');
 
 const { postSkills } = require('../controllers/coaches');
 
-router.get('/skill',getSkills);
+const { deleteSkills } = require('../controllers/coaches');
 
+router.get('/skill',getSkills);
 router.post('/skill',postSkills);
+router.delete('/skill/:id',deleteSkills);
 
 
 module.exports = router;

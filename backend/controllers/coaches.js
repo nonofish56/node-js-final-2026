@@ -53,7 +53,41 @@ const postSkills = async(req,res) => {
     })
 };
 
+const deleteSkills = async(req,res) =>{
+    const getId = req.params.id;
+
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    if(!uuidPattern.test(getId)){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        })}
+
+    const skillRepo = dataSource.getRepository(Skill);
+    const checkSkill = await skillRepo.findOne({
+        where:{
+            id: getId
+        }
+    });
+
+    if(!checkSkill){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        })}
+
+
+    const deleteSkill = await skillRepo.remove(checkSkill);
+    return res.status(200).json({
+        status: "success",
+        data: deleteSkill
+})
+};
+
+
 module.exports = { 
     getSkills,
-    postSkills
+    postSkills,
+    deleteSkills
 };
