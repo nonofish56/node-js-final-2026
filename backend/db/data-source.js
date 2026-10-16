@@ -1,6 +1,7 @@
 const { DataSource } = require('typeorm');
 
 const Skill = require('./entities/Skill');
+const Package = require('./entities/Package');
 
 const dataSource = new DataSource({
     type: 'postgres',
@@ -11,7 +12,9 @@ const dataSource = new DataSource({
     database: process.env.DB_DATABASE,
 
     entities: [
-    Skill],
+    Skill,
+    Package,
+],
     synchronize: true,
 });
 
