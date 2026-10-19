@@ -1,5 +1,6 @@
 //controller/credit
 
+const { validate } = require('uuid');
 const { Repository } = require('typeorm');
 const { dataSource } = require('../db/data-source');
 
@@ -57,9 +58,43 @@ const postPackage = async (req,res) => {
         })
 }
 
+const deletePackage = async (req,res) => {
+    const getId = req.params.creditPackageId;
+
+    const packageRepo = dataSource.getRepository(Package);
+
+    if(!validate(getId)){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        })
+    }
+
+    const checkPackage = await packageRepo.findOne({
+        where: {
+            id: getId
+        }
+    })
+    if(checkPackage === null){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        })
+    }
+    const deleteResult = await packageRepo.delete({
+        id: getId
+    })
+    return res.status(200).json({
+        status: "success",
+        data: deleteResult
+    })
+
+}
+
 module.exports = {
     getPackage,
     postPackage,
+    deletePackage,
 };
 
 
