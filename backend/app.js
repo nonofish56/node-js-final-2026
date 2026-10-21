@@ -4,12 +4,15 @@ const cors = require('cors');
 
 const coachesRouter = require('./routes/coaches');
 const creditRouter = require('./routes/credit');
+const usersRouter = require('./routes/users');
 
 app.use(cors());
 app.use(express.json());
 
 app.use('/api/coaches',coachesRouter);
 app.use('/api/credit-package', creditRouter);
+app.use('/api/users', usersRouter);
+
 
 app.get('/healthcheck', (req,res)=>{
     res.status(200).send('OK');
