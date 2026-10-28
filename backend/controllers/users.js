@@ -70,7 +70,7 @@ const signupUsers = async(req,res) => {
             
         }
     })
-}
+};
 
 const loginUsers = async(req,res) => {
     const { email,password } = req.body;
@@ -125,9 +125,42 @@ const loginUsers = async(req,res) => {
             name: getUser.name
         }}
     })
-}
+};
+
+const getUsersProfile = async(req,res) => {
+    const userId = req.user.id;
+
+    const getRepo = dataSource.getRepository(Users);
+
+    const getUser = await getRepo.findOne({
+        where:{
+            id: userId
+        }
+    })
+    if(!getUser){
+        return res.status(401).json({
+            status: "failed",
+            message: "無效的token"
+        })
+    }
+
+    const getUserData = {
+        name: getUser.name,
+        email: getUser.email
+    };
+    return res.status(200).json({
+        status: "success",
+        data:{
+            user:{
+                ...getUserData
+            }
+        } 
+    })
+
+};
 
 module.exports = {
     signupUsers,
     loginUsers,
+    getUsersProfile,
 };

@@ -1,5 +1,6 @@
 //routes/users.js
 const express = require('express');
+const verifyToken = require('../middleware/verifyToken.js');
 
 const router = express.Router();
 
@@ -9,10 +10,15 @@ const { signupUsers } = require('../controllers/users')
 //post登錄會員
 const { loginUsers } = require('../controllers/users')
 
+//get取得個人資料
+const { getUsersProfile } = require('../controllers/users.js')
+
 
 
 router.post('/signup',signupUsers)
 router.post('/login',loginUsers)
+router.get('/profile',verifyToken,getUsersProfile)
+
 
 
 
