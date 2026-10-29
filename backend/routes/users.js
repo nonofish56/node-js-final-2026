@@ -13,11 +13,15 @@ const { loginUsers } = require('../controllers/users')
 //get取得個人資料
 const { getUsersProfile } = require('../controllers/users.js')
 
+//put 更新本人的暱稱
+const { updateUsersProfile } = require('../controllers/users')
+
 
 
 router.post('/signup',signupUsers)
 router.post('/login',loginUsers)
 router.get('/profile',verifyToken,getUsersProfile)
+router.put('/profile',verifyToken,updateUsersProfile);
 
 
 

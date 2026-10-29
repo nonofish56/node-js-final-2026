@@ -159,8 +159,54 @@ const getUsersProfile = async(req,res) => {
 
 };
 
+const updateUsersProfile = async(req,res) => {
+    const updateBody = req.body.name;
+
+    if(!updateBody){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        })
+    }
+
+    const userRepo = dataSource.getRepository(Users);
+
+    const userData = await userRepo.findOne({
+        where:{
+            id: req.user.id
+        }
+    })
+    if(updateBody === userData.name){
+        return res.status(400).json({
+            status: "failed",
+            message: "使用者名稱未變更"
+        })
+    };
+    
+    const newUserData = await userRepo.update(
+        {id: req.user.id},
+        {name: updateBody}
+    );
+
+    if(newUserData.affected === 0){
+        return res.status(400).json({
+            status: "failed",
+            message: "更新使用者資料失敗"
+        })
+    };
+    return res.status(200).json({
+        status: "success",
+        data:{
+            user:{
+                name: updateBody
+            }
+        }
+    });
+};
+
 module.exports = {
     signupUsers,
     loginUsers,
     getUsersProfile,
+    updateUsersProfile,
 };
