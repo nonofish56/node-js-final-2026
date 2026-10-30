@@ -204,9 +204,98 @@ const updateUsersProfile = async(req,res) => {
     });
 };
 
+const updateUsersPassword = async(req,res) => {
+    const getBody = req.body;
+
+    const password = {
+        old: getBody.password,
+        new: getBody.new_password,
+        check: getBody.confirm_new_password
+    };
+    if(!password.old || !password.new || !password.check){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        })
+    }
+
+    const isValidPassword = (value) => {
+        return (
+            typeof value === "string" &&
+            value.length >= 8 &&
+            value.length <= 16 &&   
+            /[A-Z]/.test(value) &&
+            /[a-z]/.test(value) &&
+            /[0-9]/.test(value)
+        );
+    };
+
+    if(
+        !isValidPassword(password.old) ||
+        !isValidPassword(password.new) ||
+        !isValidPassword(password.check)
+    ){
+        return res.status(400).json({
+            status: "failed",
+            message: "密碼不符合規則，需要包含英文數字大小寫，最短8個字，最長16個字"
+        })
+    };
+
+    const userRepo = dataSource.getRepository(Users);
+
+    const userData = await userRepo.findOne({
+        where:{
+            id: req.user.id
+        }
+    });
+
+    if(password.old === password.new){
+        return res.status(400).json({
+            status: "failed",
+            message: "新密碼不能與舊密碼相同"
+        })
+    };
+    if(password.new !== password.check){
+        return res.status(400).json({
+            status: "failed",
+            message: "新密碼與驗證新密碼不一致"
+        })
+    };
+
+    const isMatch = await bcrypt.compare(
+        password.old,
+        userData.password
+    );
+    if(!isMatch){
+        return res.status(400).json({
+            status: "failed",
+            message: "密碼輸入錯誤"
+        })
+    };
+
+    const newPassword = await bcrypt.hash(password.new, 12);
+
+    const saveNewPassword = await userRepo.update(
+        {id: req.user.id},
+        {password: newPassword}
+    );
+    if(saveNewPassword.affected === 0){
+        return res.status(400).json({
+            status: "failed",
+            message: "更新密碼失敗"
+        })
+    };
+
+    return res.status(200).json({
+        status: "success",
+        data: null
+    });
+};
+
 module.exports = {
     signupUsers,
     loginUsers,
     getUsersProfile,
     updateUsersProfile,
+    updateUsersPassword
 };
