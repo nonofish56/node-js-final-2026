@@ -21,7 +21,11 @@ const package = new EntitySchema ({
             type : 'numeric',
             precision : 10,
             scale : 2
-        }       
+        },
+        createdAt: {
+                type: 'timestamp',
+                createDate: true
+        },
     }
 });
 
