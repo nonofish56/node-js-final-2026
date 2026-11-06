@@ -1,6 +1,7 @@
 //controllers/admin.js
 const { dataSource } = require('../db/data-source.js')
 const Coaches = require('../db/entities/Coaches.js');
+const coachesSkills = require('../db/entities/coaches_skills.js');
 const Users = require('../db/entities/Users.js');
 
 
@@ -104,7 +105,61 @@ const upgradeUserToCoach = async (req,res) => {
     
 };
 
+const getOneCoachData = async (req,res) => {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    if(userRole !== "COACH"){
+        return res.status(401).json({
+            status: "failed",
+            message: "使用者尚未成為教練"
+        })
+    }
+    try{
+        const coachRepo = dataSource.getRepository(Coaches);
+
+        const coaches = await coachRepo.findOne({
+            where:{
+                user_id: userId
+            }
+        })
+
+        const coachesSkillsRepo = dataSource.getRepository(coachesSkills);
+        
+        const coachesSkillRecords = await coachesSkillsRepo.
+        find({
+            where:{
+                coaches_id: coaches.id
+            }
+        })
+
+        const skillIds = coachesSkillRecords.map((skill) => {
+            return skill.skills_id;
+        })
+
+        return res.status(200).json({
+            status: "success",
+            data:{
+                id: coaches.id,
+                experience_years: coaches.experience_years,
+                description: coaches.description,
+                profile_image_url: coaches.profile_image_url,
+                skill_ids: skillIds,
+            }
+        })
+
+    }catch(err){
+        console.error(err);
+        return res.status(500).json({
+            status: "failed",
+            message: "伺服器內部錯誤"
+        });
+    }
+    
+};
+
 module.exports = {
-    upgradeUserToCoach
+    upgradeUserToCoach,
+    getOneCoachData,
 };
 
