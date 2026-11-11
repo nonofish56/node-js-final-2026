@@ -2,7 +2,10 @@
 const { dataSource } = require('../db/data-source.js')
 const Coaches = require('../db/entities/Coaches.js');
 const coachesSkills = require('../db/entities/coaches_skills.js');
+const skill = require('../db/entities/Skill.js')
 const Users = require('../db/entities/Users.js');
+const { validate } = require("uuid");
+const { In } = require("typeorm");
 
 
 const upgradeUserToCoach = async (req,res) => {
@@ -158,8 +161,164 @@ const getOneCoachData = async (req,res) => {
     
 };
 
+const updateCoachData = async (req,res) => {
+    const coachBody = req.body;
+    const userId = req.user.id;
+
+    const userRole = req.user.role;
+    if(userRole !== "COACH"){
+        return res.status(401).json({
+            status: "failed",
+            message: "使用者尚未成為教練"
+        })
+    };
+
+    const experienceYears = coachBody.experience_years;
+    if(!Number.isInteger(experienceYears) || experienceYears < 0 ){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        })
+    };
+
+    const description = coachBody.description;
+    if(typeof description !== "string" || description.trim() === ""){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        })
+    };
+
+    const profileImageUrl = coachBody.profile_image_url;
+    if(typeof profileImageUrl !== "string" || profileImageUrl.trim() === "" || !profileImageUrl.startsWith("https://")){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        })
+    };
+
+    const skillIds = coachBody.skill_ids;
+    if(!Array.isArray(skillIds) || skillIds.length === 0){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        })
+    };
+
+    const hasInvalidSkill = skillIds.some((skillId)=>{
+        return !validate(skillId);
+        });
+    if(hasInvalidSkill){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        })
+    };
+
+    const coachRepo = dataSource.getRepository(Coaches);
+
+    const getCoachData = await coachRepo.findOne({
+        where:{
+            user:{
+                id: userId
+            }
+        }
+    });
+
+    if(!getCoachData){
+        return res.status(400).json({
+            status: "failed",
+            message: "找不到對應的教練資料"
+        })
+    };
+
+    const skillRepo = dataSource.getRepository(skill);
+
+    const skills = await skillRepo.find({
+        where:{
+            id: In(skillIds)
+        }
+    })
+
+    if (skills.length !== skillIds.length) {
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+    });
+}
+try {
+  await dataSource.transaction(async (manager) => {
+
+    const txCoachRepo = manager.getRepository(Coaches);
+
+    const updateResult = await txCoachRepo.update(
+      { id: getCoachData.id },
+      {
+        experience_years: experienceYears,
+        description,
+        profile_image_url: profileImageUrl
+      }
+    );
+
+    if (updateResult.affected === 0) {
+      throw new Error("更新教練資料失敗");
+    }
+
+    const txCoachSkillRepo = manager.getRepository(coachesSkills);
+    
+    await txCoachSkillRepo.delete({
+        coaches_id: getCoachData.id
+    });
+
+    const newCoachSkills = skillIds.map((skillId) => {
+        return {
+            skills_id : skillId,
+            coaches_id: getCoachData.id
+        };
+    });
+
+    await txCoachSkillRepo.save(newCoachSkills);
+    });
+
+    const updatedCoach = await coachRepo.findOne({
+        where:{
+            id : getCoachData.id
+        }
+    });
+    const coachSkillRepo = dataSource.getRepository(coachesSkills);
+
+    const updatedCoachSkills = await coachSkillRepo.find({
+        where: {
+            coaches_id: getCoachData.id
+        }
+    });
+
+    const updatedSkillIds = updatedCoachSkills.map((item) => {
+        return item.skills_id;
+    });
+
+    return res.status(200).json({
+        status: "success",
+        data: {
+            experience_years: updatedCoach.experience_years,
+            description: updatedCoach.description,
+            profile_image_url: updatedCoach.profile_image_url,
+            skill_ids: updatedSkillIds
+    }
+});
+} catch (error) {
+  console.error("更新教練 API 錯誤:", error);
+
+  return res.status(500).json({
+    status: "failed",
+    message: "更新教練資料失敗"
+  });
+    
+}};
+
 module.exports = {
     upgradeUserToCoach,
     getOneCoachData,
+    updateCoachData,
 };
 
