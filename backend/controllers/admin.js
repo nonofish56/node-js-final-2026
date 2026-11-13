@@ -4,6 +4,7 @@ const Coaches = require('../db/entities/Coaches.js');
 const coachesSkills = require('../db/entities/coaches_skills.js');
 const skill = require('../db/entities/Skill.js')
 const Users = require('../db/entities/Users.js');
+const Courses = require('../db/entities/Courses.js');
 const { validate } = require("uuid");
 const { In } = require("typeorm");
 
@@ -316,9 +317,63 @@ try {
     
 }};
 
+const getCoachCourses = async (req,res) => {
+    const getUserRole = req.user.role;
+    
+    if(getUserRole !== "COACH"){
+        return res.status(401).json({
+            status: "failed",
+            message: "使用者尚未成為教練"
+        })
+    };
+
+    const userId = req.user.id
+    const coachRepo = dataSource.getRepository(Coaches);
+
+    const getCoachData = await coachRepo.findOne({
+        where:{
+            user_id : userId
+        }
+    });
+
+    const coursesRepo = dataSource.getRepository(Courses);
+
+    const coachesId = getCoachData.id
+    const getCoursesData = await coursesRepo.find({
+        where:{
+            coaches_id: coachesId
+        }
+    })
+
+    const now = new date();
+
+    function getCourseStatus(now,start_at,end_at){
+        if(now < start_at){
+            return "尚未開始"
+        }
+        if(now >= start_at && now < end_at){
+            return "進行中"
+        }
+        if(now >= end_at){
+            return "已結束"
+        }
+    };
+
+    const checkCourses = getCoursesData.map((course)=>{
+        const newCourses = {
+            ...course,
+            status: getCourseStatus(now,course.start_at,course.end_at)
+        }
+        return newCourses;
+    })
+
+
+}
+
 module.exports = {
     upgradeUserToCoach,
     getOneCoachData,
     updateCoachData,
+    getCoachCourses,
 };
 

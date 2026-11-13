@@ -5,6 +5,7 @@ const Package = require('./entities/Package');
 const Users = require('./entities/Users')
 const Couches = require('./entities/Coaches');
 const CoachesSkills = require('./entities/coaches_skills')
+const Courses = require('./entities/Courses.js')
 
 const dataSource = new DataSource({
     type: 'postgres',
@@ -20,6 +21,7 @@ const dataSource = new DataSource({
     Users,
     Couches,
     CoachesSkills,
+    Courses,
 ],
     synchronize: true,
 });

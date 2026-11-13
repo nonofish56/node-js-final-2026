@@ -13,10 +13,14 @@ const { getOneCoachData } = require('../controllers/admin');
 //更新教練本人的後台資料
 const { updateCoachData } = require('../controllers/admin.js');
 
+//取得教練本人開設的全部課程列表
+const { getCoachCourses } = require('../controllers/admin.js')
+
 
 router.post('/coaches/:userId',upgradeUserToCoach);
 router.get('/coaches',verifyToken,getOneCoachData);
 router.put('/coaches',verifyToken,updateCoachData);
+router.get('/coaches/courses',verifyToken,getCoachCourses);
 
 
 module.exports = router;
