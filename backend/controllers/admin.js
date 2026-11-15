@@ -1,12 +1,17 @@
 //controllers/admin.js
 const { dataSource } = require('../db/data-source.js')
+
 const Coaches = require('../db/entities/Coaches.js');
 const coachesSkills = require('../db/entities/coaches_skills.js');
 const skill = require('../db/entities/Skill.js')
 const Users = require('../db/entities/Users.js');
 const Courses = require('../db/entities/Courses.js');
+const courseBookings = require('../db/entities/Course_bookings.js');
+
+
 const { validate } = require("uuid");
 const { In } = require("typeorm");
+
 
 
 const upgradeUserToCoach = async (req,res) => {
@@ -159,6 +164,7 @@ const getOneCoachData = async (req,res) => {
             message: "伺服器內部錯誤"
         });
     }
+    
     
 };
 
@@ -345,7 +351,7 @@ const getCoachCourses = async (req,res) => {
         }
     })
 
-    const now = new date();
+    const now = new Date();
 
     function getCourseStatus(now,start_at,end_at){
         if(now < start_at){
@@ -359,21 +365,113 @@ const getCoachCourses = async (req,res) => {
         }
     };
 
+    const courseIds = getCoursesData.map((course) => course.id);
+
+    const courseBookingsRepo = dataSource.getRepository(courseBookings);
+
+    const findCourseData = await courseBookingsRepo.find({
+        where:{
+            courses:{
+                id: In(courseIds)
+            }
+        },
+        relations: {
+            courses: true
+        }
+    });
+
     const checkCourses = getCoursesData.map((course)=>{
+        const participants = findCourseData.filter((bookings)=> bookings.courses.id === course.id).length;
+
         const newCourses = {
             ...course,
-            status: getCourseStatus(now,course.start_at,course.end_at)
-        }
+            status: getCourseStatus(now,course.start_at,course.end_at),
+            participants: participants
+        };
+
         return newCourses;
-    })
+    });
 
+    return res.status(200).json({
+        status: "success",
+        data: checkCourses
+    });
+};
 
-}
+const postNewCourses = async (req,res) => {
+    const getUser = req.user.role
+
+    if(getUser !== "COACH"){
+        return res.status(401).json({
+            status: "failed",
+            message: "使用者尚未變成教練"
+        });
+    };
+
+    const {
+        name,
+        meeting_url,
+        max_participants,
+        start_at,
+        end_at
+    } = req.body;
+
+    if(!name || typeof name !== "string" || name.trim() === ""){
+        return res.status(400).json({
+        status: "failed",
+        message: "欄位未填寫正確"
+    });
+};
+    if(!meeting_url || typeof meeting_url !== "string" || meeting_url.trim() === "" || !meeting_url.startsWith("https")){
+        return res.status(400).json({
+        status: "failed",
+        message: "欄位未填寫正確"
+    });
+};
+    if(typeof max_participants !== "number" ||
+    !Number.isInteger(max_participants) ||    
+    max_participants < 0){
+        return res.status(400).json({
+        status: "failed",
+        message: "欄位未填寫正確"
+    });
+};
+
+    const coachesRepo = dataSource.getRepository(Coaches);
+
+    const coachId = req.user.id;
+    const findCoach = await coachesRepo.findOne({
+        where:{
+            user_id:coachId
+        }
+    });
+
+    const coursesRepo = dataSource.getRepository(Courses);
+
+    const newCourse = coursesRepo.create({
+        name,
+        meeting_url,
+        max_participants,
+        start_at,
+        end_at,
+        coaches: findCoach
+    });
+
+    const saveCourse = await coursesRepo.save(newCourse);
+    return res.status(201).json({
+        status: "success",
+        data:{
+            course : saveCourse,
+        }
+    });
+
+};
 
 module.exports = {
     upgradeUserToCoach,
     getOneCoachData,
     updateCoachData,
     getCoachCourses,
+    postNewCourses,
 };
 

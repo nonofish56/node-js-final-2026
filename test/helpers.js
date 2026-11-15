@@ -132,7 +132,7 @@ async function createCourse(coachToken, skillId, overrides = {}) {
     .post('/api/admin/coaches/courses')
     .set('Authorization', `Bearer ${coachToken}`)
     .send(course);
-  expectSuccess(res);
+    expectSuccess(res);
   const id = res.body?.data?.course?.id;
   return { id, ...course, res };
 }

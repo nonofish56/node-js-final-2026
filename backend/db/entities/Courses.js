@@ -1,4 +1,4 @@
-const { EntitySchema, JoinColumn } = require('typeorm');
+const { EntitySchema } = require('typeorm');
 
 const Courses = new EntitySchema ({
     name: 'Courses',
