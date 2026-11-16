@@ -14,18 +14,23 @@ const { getOneCoachData } = require('../controllers/admin');
 const { updateCoachData } = require('../controllers/admin.js');
 
 //取得教練本人開設的全部課程列表
-const { getCoachCourses } = require('../controllers/admin.js')
+const { getCoachCourses } = require('../controllers/admin.js');
 
 //教練開課新課程
-const { postNewCourses } = require('../controllers/admin.js')
+const { postNewCourses } = require('../controllers/admin.js');
 
 //取得單一課程詳情
-const { getCoachCourseById } = require('../controllers/admin.js')
+const { getCoachCourseById } = require('../controllers/admin.js');
+
+//更新單一課程
+const { putCoachCourseById } = require('../controllers/admin.js');
 
 
 router.post('/coaches/courses', verifyToken, postNewCourses);
 
 router.get('/coaches/courses/:courseId',verifyToken,getCoachCourseById);
+
+router.put('/coaches/courses/:courseId',verifyToken,putCoachCourseById);
 
 router.post('/coaches/:userId', upgradeUserToCoach);
 

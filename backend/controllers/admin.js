@@ -507,7 +507,7 @@ const getCoachCourseById = async (req,res) => {
     };
 
     const getSkillId = findOneCoachClass.skill_id;
-    
+
     console.log("課程資料：", findOneCoachClass);
     console.log("技能 ID：", getSkillId);
     
@@ -537,6 +537,113 @@ const getCoachCourseById = async (req,res) => {
     });
 };
 
+const putCoachCourseById = async (req,res) => {
+    const {
+        name,
+        description,
+        skill_id,
+        start_at,
+        end_at,
+        max_participants,
+        meeting_url
+    }= req.body;
+    
+    const isValidString = (value) => {
+        if(typeof value !== "string"){
+            return false;
+        };
+        if(!value.trim()){
+            return false;
+        }
+        else{
+            return true;
+        }
+    };
+    
+    if(
+        !isValidString(name) || 
+        !isValidString(description) ||
+        !isValidString(skill_id) ||
+        !isValidString(start_at) ||
+        !isValidString(end_at) ||
+        !isValidString(meeting_url)
+    ){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+
+    if(
+        !meeting_url.startsWith("https")||
+        typeof max_participants !== "number" ||
+        !Number.isInteger(max_participants) ||
+        max_participants < 0
+    ){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+
+    const userId = req.user.id;
+    const courseId = req.params.courseId;
+
+    const coachesRepo = dataSource.getRepository(Coaches);
+
+    const courseRepo = dataSource.getRepository(Courses);
+
+    const coachesData = await coachesRepo.findOne({
+        where:{
+            user_id : userId
+        }
+    });
+
+    if(!coachesData){
+        return res.status(400).json({
+            status: "failed",
+            message: "課程不存在"
+        });
+    }
+
+    const courseData = await courseRepo.findOne({
+        where: {
+            coaches_id : coachesData.id,
+            id : courseId
+        }
+    });
+
+    if(!courseData){
+        return res.status(400).json({
+            status: "failed",
+            message: "課程不存在"
+        });
+    };
+
+    const resultData = await courseRepo.update(
+        {id: courseData.id},
+        {name: req.body.name,
+        description: req.body.description,
+        skill_id: req.body.skill_id,
+        start_at: req.body.start_at,
+        end_at: req.body.end_at,
+        max_participants: req.body.max_participants,
+        meeting_url: req.body.meeting_url}
+    );
+
+    const updateResult = await courseRepo.findOne({
+        where:{
+            id: courseData.id,   
+        }
+    });
+    return res.status(200).json({
+        status: "success",
+        data: {
+            course: updateResult
+        }
+    });
+};
+
 module.exports = {
     upgradeUserToCoach,
     getOneCoachData,
@@ -544,5 +651,6 @@ module.exports = {
     getCoachCourses,
     postNewCourses,
     getCoachCourseById,
+    putCoachCourseById,
 };
 
