@@ -410,6 +410,8 @@ const postNewCourses = async (req,res) => {
 
     const {
         name,
+        skill_id,
+        description,
         meeting_url,
         max_participants,
         start_at,
@@ -450,6 +452,8 @@ const postNewCourses = async (req,res) => {
 
     const newCourse = coursesRepo.create({
         name,
+        skill_id,
+        description,
         meeting_url,
         max_participants,
         start_at,
@@ -467,11 +471,78 @@ const postNewCourses = async (req,res) => {
 
 };
 
+const getCoachCourseById = async (req,res) => {
+    const courseId = req.params.courseId;
+    const userId = req.user.id;
+
+    const coachesRepo = dataSource.getRepository(Coaches);
+
+    const findOneCoachUser = await coachesRepo.findOne({
+        where:{
+            user_id : userId
+        }
+    });
+
+    if(!findOneCoachUser){
+        return res.status(400).json({
+            status: "failed",
+            message: "課程不存在"
+        });
+    };
+
+    const coursesRepo = dataSource.getRepository(Courses);
+
+    const findOneCoachClass = await coursesRepo.findOne({
+        where:{
+            id : courseId,
+            coaches_id : findOneCoachUser.id
+        }
+    });
+
+    if(!findOneCoachClass){
+        return res.status(400).json({
+            status: "failed",
+            message: "課程不存在"
+        });
+    };
+
+    const getSkillId = findOneCoachClass.skill_id;
+    
+    console.log("課程資料：", findOneCoachClass);
+    console.log("技能 ID：", getSkillId);
+    
+    const skillRepo = dataSource.getRepository(skill);
+
+    const skillName = await skillRepo.findOne({
+        where:{
+            id: getSkillId
+        }
+    });
+
+    const getSkillName = skillName.name;
+
+    return res.status(200).json({
+        status: "success",
+        data: {
+            id: findOneCoachClass.id,
+            name: findOneCoachClass.name,
+            description: findOneCoachClass.description,
+            start_at: findOneCoachClass.start_at,
+            end_at: findOneCoachClass.end_at,
+            max_participants: findOneCoachClass.max_participants,
+            skill_name: getSkillName,
+            skill_id: getSkillId,
+            meeting_url: findOneCoachClass.meeting_url,
+        }
+    });
+};
+
 module.exports = {
     upgradeUserToCoach,
     getOneCoachData,
     updateCoachData,
     getCoachCourses,
     postNewCourses,
+    getCoachCourseById,
 };
 

@@ -19,6 +19,14 @@ const Courses = new EntitySchema ({
                 nullable: false,
                 unique: false
             },
+            description:{
+                type: 'text',
+                nullable: true
+            },
+            skill_id: {
+            type: 'uuid',
+            nullable: true
+            },
             start_at:{
                 type: 'timestamp',
                 nullable: false
@@ -37,6 +45,14 @@ const Courses = new EntitySchema ({
             },
         },
         relations: {
+            skills:{
+                type: 'many-to-one',
+                target: 'Skill',
+                joinColumn:{
+                    name: 'skill_id',
+                    referencedColumnName: 'id'
+                },
+            },
             coaches: {
                 type: 'many-to-one',
                 target: 'Coaches',
