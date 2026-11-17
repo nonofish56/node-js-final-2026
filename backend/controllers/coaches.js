@@ -3,6 +3,12 @@
 const { dataSource } = require('../db/data-source.js')
 
 const Skill = require('../db/entities/Skill.js');
+const Coaches = require('../db/entities/Coaches.js');
+
+const { validate } = require('uuid');
+const CoachesSkills = require('../db/entities/coaches_skills.js');
+
+const { In } = require('typeorm');
 
 const getSkills = async(req,res) => {
     const SkillRepo = dataSource.getRepository(Skill);
@@ -85,9 +91,151 @@ const deleteSkills = async(req,res) =>{
 })
 };
 
+const getCoachPage = async(req,res) => {
+    const getPer = req.query.per;
+    const getPage = req.query.page;
+
+    if(!getPer || !getPage){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+
+    const isValue = (value) => {
+        if(typeof value !== "string"){
+            return false;
+        }
+        if(value.trim() === ""){
+            return false;
+        }
+        const numberValue = Number(value);
+        return Number.isInteger(numberValue) && numberValue >= 0;
+    };
+    
+    if(
+        !isValue(getPer) || !isValue(getPage) || Number(getPage) === 0
+    ){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+
+    const numberPer = Number(getPer);
+    const numberPage = Number(getPage);
+    
+    const skip = (numberPage -1) * numberPer;
+
+    const coachesRepo = dataSource.getRepository(Coaches);
+
+    const result = await coachesRepo.find({
+        skip: skip,
+        take: numberPer,
+        relations:{
+            user: true
+        }
+    });
+
+    const coachList = result.map((coach)=>{
+        return {
+            id: coach.id,
+            user_id: coach.user_id,
+            name: coach.user.name
+        }
+    });
+
+    return res.status(200).json({
+        status: "success",
+        data: coachList
+    });
+};
+
+const getCoachById = async(req,res) => {
+    const coachId = req.params.coachId;
+
+    if(!coachId || typeof coachId !== "string"){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+
+    const checkValidate = validate(coachId);
+
+    if(!checkValidate){
+        return res.status(400).json({
+            status: "failed",
+            message: "找不到該教練"
+        });
+    }
+
+    const coachRepo = dataSource.getRepository(Coaches);
+
+    const foundCoach = await coachRepo.findOne({
+        where:{
+            id: coachId,
+        },
+        relations:{
+            user: true
+        }
+    });
+
+    if(!foundCoach){
+        return res.status(400).json({
+            status: "failed",
+            message: "找不到該教練"
+        });
+    };
+
+    const coachSkillRepo = dataSource.getRepository(CoachesSkills);
+
+    const getCoachSkills = await coachSkillRepo.find({
+        where:{
+            coaches_id : foundCoach.id,
+        }
+    });
+
+    const foundSkillsId = getCoachSkills.map((skills) => {
+        return skills.skills_id
+    });
+
+    const skillRepo = dataSource.getRepository(Skill);
+    
+    const getSkill = await skillRepo.find({
+        where:{
+            id: In(foundSkillsId)
+        }
+    });
+
+    const skillList = getSkill.map(s => s.name);
+
+    return res.status(200).json({
+        status: "success",
+        data: {
+            user:{
+                name: foundCoach.user.name,
+                role: foundCoach.user.role
+            },
+            coach:{
+                id: foundCoach.id,
+                user_id: foundCoach.user_id,
+                experience_years: foundCoach.experience_years,
+                description: foundCoach.description,
+                profile_image_url: foundCoach.profile_image_url,
+                created_at: foundCoach.created_at,
+                updated_at: foundCoach.updated_at,
+                skills: skillList
+            },
+        },
+    });
+};
+
 
 module.exports = { 
     getSkills,
     postSkills,
-    deleteSkills
+    deleteSkills,
+    getCoachPage,
+    getCoachById
 };
