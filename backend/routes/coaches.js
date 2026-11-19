@@ -13,6 +13,9 @@ const { getCoachPage } = require('../controllers/coaches');
 
 const { getCoachById } = require('../controllers/coaches');
 
+const { getCoachCourses } = require('../controllers/coaches');
+
+
 
 router.get('/skill',getSkills);
 router.post('/skill',postSkills);
@@ -20,6 +23,8 @@ router.delete('/skill/:id',deleteSkills);
 
 router.get('/',getCoachPage);
 router.get('/:coachId',getCoachById);
+router.get('/:coachId/courses',getCoachCourses);
+
 
 
 module.exports = router;

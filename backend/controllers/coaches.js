@@ -6,9 +6,13 @@ const Skill = require('../db/entities/Skill.js');
 const Coaches = require('../db/entities/Coaches.js');
 
 const { validate } = require('uuid');
+const { MoreThan } = require('typeorm');
 const CoachesSkills = require('../db/entities/coaches_skills.js');
 
+const Courses = require('../db/entities/Courses.js');
+
 const { In } = require('typeorm');
+const Users = require('../db/entities/Users.js');
 
 const getSkills = async(req,res) => {
     const SkillRepo = dataSource.getRepository(Skill);
@@ -231,11 +235,75 @@ const getCoachById = async(req,res) => {
     });
 };
 
+const getCoachCourses = async(req,res) => {
+    const coachId = req.params.coachId;
+
+    if(!coachId || typeof coachId !== "string" || coachId.trim() === ""){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+    const checkValidate = validate(coachId);
+
+    if(!checkValidate){
+        return res.status(400).json({
+            status: "failed",
+            message: "找不到該教練" 
+        });
+    };
+
+    const coachRepo = dataSource.getRepository(Coaches);
+
+    const foundCoach = await coachRepo.findOne({
+        where:{
+            id : coachId,
+        },
+        relations:{
+            user: true
+        }
+    });
+
+    const coursesRepo = dataSource.getRepository(Courses);
+
+    const now = new Date();
+
+    const foundCourses = await coursesRepo.find({
+        where:{
+            coaches_id : foundCoach.id,
+            end_at : MoreThan(now)
+        },
+        relations:{
+            skills: true
+        }
+    });
+
+    const resultSkillsByCoach = foundCourses.map((course)=>{
+        return {
+            id: course.id,
+            name: course.name,
+            description: course.description,
+            start_at : new Date(course.start_at).toISOString(),
+            end_at : new Date(course.end_at).toISOString(),
+            coach_name : foundCoach.user.name,
+            skill_name : course.skills.name,
+            max_participants : course.max_participants 
+        };
+    });
+
+    return res.status(200).json({
+        status: "success",
+        data: resultSkillsByCoach
+    });
+};
+
+
 
 module.exports = { 
     getSkills,
     postSkills,
     deleteSkills,
     getCoachPage,
-    getCoachById
+    getCoachById,
+    getCoachCourses,
 };
