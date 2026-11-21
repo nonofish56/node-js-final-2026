@@ -5,7 +5,9 @@ const { dataSource } = require('../db/data-source.js')
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
-const Users = require('../db/entities/Users.js')
+const Users = require('../db/entities/Users.js');
+
+const creditPurchases = require('../db/entities/Credit_purchases.js');
 
 const signupUsers = async(req,res) => {
 
@@ -292,10 +294,44 @@ const updateUsersPassword = async(req,res) => {
     });
 };
 
+const getCreditPackageByUser = async (req,res) => {
+    const getUserId = req.user.id;
+
+    const creditPurchasesRepo = dataSource.getRepository(creditPurchases);
+
+    const foundCreditPurchases = await creditPurchasesRepo.find({
+        where:{
+            users:{
+                id: getUserId
+            },
+        },
+        order:{
+            purchase_at: "DESC"
+            },
+    });
+
+    const resultCreditPurchases = foundCreditPurchases.map((purchases)=> {
+        return {
+            name: purchases.name,
+            purchased_credits: purchases.purchased_credits,
+            price_paid: Number(purchases.price_paid),
+            purchase_at: purchases.purchase_at
+        };
+    });
+
+    return res.status(200).json({
+        status: "success",
+        data: resultCreditPurchases
+    });
+
+
+};
+
 module.exports = {
     signupUsers,
     loginUsers,
     getUsersProfile,
     updateUsersProfile,
-    updateUsersPassword
+    updateUsersPassword,
+    getCreditPackageByUser
 };

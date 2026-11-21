@@ -1,10 +1,11 @@
 //controller/credit
 
 const { validate } = require('uuid');
-const { Repository } = require('typeorm');
+
 const { dataSource } = require('../db/data-source');
 
 const Package = require('../db/entities/Package.js');
+const Credit_purchases = require('../db/entities/Credit_purchases.js');
 
 
 const getPackage = async (req,res) => {
@@ -56,7 +57,7 @@ const postPackage = async (req,res) => {
             status: "success",
             data: newPackage
         })
-}
+};
 
 const deletePackage = async (req,res) => {
     const getId = req.params.creditPackageId;
@@ -89,15 +90,61 @@ const deletePackage = async (req,res) => {
         data: deleteResult
     })
 
-}
+};
+
+const postCreditPackageById = async (req,res) => {
+    const creditPackageId = req.params.creditPackageId;
+
+    const userId = req.user.id;
+
+    if(!validate(creditPackageId)){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        });
+    };
+
+    const packageRepo = dataSource.getRepository(Package);
+
+    const foundCreditPackage = await packageRepo.findOne({
+        where:{
+            id: creditPackageId
+        }
+    });
+
+    if(!foundCreditPackage){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        });
+    };
+
+    const creditPurchasesRepo = dataSource.getRepository(Credit_purchases);
+
+    const createdPurchases = creditPurchasesRepo.create(
+        {
+            name: foundCreditPackage.name,
+            purchased_credits: foundCreditPackage.credit_amount,
+            price_paid: foundCreditPackage.price,
+            users: { id: userId },
+            credit_Package: {id: foundCreditPackage.id},
+        },
+    );
+
+    await creditPurchasesRepo.save(createdPurchases);
+
+    return res.status(200).json({
+        status: "success",
+        data: null
+    });
+};
 
 module.exports = {
     getPackage,
     postPackage,
     deletePackage,
+    postCreditPackageById,
 };
-
-
 
 
 
