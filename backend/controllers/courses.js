@@ -162,9 +162,55 @@ const postCourseId = async(req,res) => {
     });
 };
 
+const updateCourseById = async(req,res) =>{
+    const courseId = req.params.courseId;
+    const userId = req.user.id;
+    
+    if(!validate(courseId)){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        });
+    };
+
+    const coursesBookingsRepo = dataSource.getRepository(CourseBookings);
+    
+    //資料庫查詢條件
+    const foundCoursesData = await coursesBookingsRepo.findOne({
+        where:{
+            users:{
+                id: userId
+            },
+            courses:{
+                id: courseId
+            },
+            cancelled_at: IsNull()
+        },
+    });
+    
+    if(!foundCoursesData){
+        return res.status(400).json({
+            status: "failed",
+            message: "ID錯誤"
+        });
+    };
+
+    const now = new Date();
+
+    const updateCourseBooking = await coursesBookingsRepo.update(foundCoursesData.id,{
+    cancelled_at : now
+    });
+
+    return res.status(200).json({
+        status: "success",
+        data: null
+    });
+};
+
 
 
 module.exports = {
     getAllCourses,
     postCourseId,
+    updateCourseById,
 };
