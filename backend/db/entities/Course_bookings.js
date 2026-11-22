@@ -10,6 +10,10 @@ const courseBookings = new EntitySchema({
             primary: true,
             generated: 'uuid'
         },
+        cancelled_at:{
+            type: 'timestamptz',
+            nullable: true
+        },
     },
     relations: {
         users:{

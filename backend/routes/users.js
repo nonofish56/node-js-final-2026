@@ -22,7 +22,8 @@ const { updateUsersPassword } = require('../controllers/users.js')
 //取得本人的購買方案紀錄
 const { getCreditPackageByUser } = require('../controllers/users.js');
 
-
+//取得本人的課表與剩餘堂數
+const { getCoursesByUser } = require('../controllers/users.js')
 
 router.post('/signup',signupUsers)
 router.post('/login',loginUsers)
@@ -31,6 +32,7 @@ router.put('/profile',verifyToken,updateUsersProfile);
 router.put('/password',verifyToken,updateUsersPassword);
 
 router.get('/credit-package',verifyToken,getCreditPackageByUser);
+router.get('/courses',verifyToken,getCoursesByUser);
 
 
 

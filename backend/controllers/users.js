@@ -6,8 +6,9 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const Users = require('../db/entities/Users.js');
-
 const creditPurchases = require('../db/entities/Credit_purchases.js');
+const Courses_bookings = require('../db/entities/Course_bookings.js');
+const Courses = require('../db/entities/Courses.js');
 
 const signupUsers = async(req,res) => {
 
@@ -327,11 +328,85 @@ const getCreditPackageByUser = async (req,res) => {
 
 };
 
+const getCoursesByUser = async (req,res) => {
+    const getUserId = req.user.id;
+
+    const PurchasesRepo = dataSource.getRepository(creditPurchases);
+
+    //購買紀錄，用來計算總購買堂數
+    const foundPurchasesUser = await PurchasesRepo.find({
+        where:{
+            users:{
+                id: getUserId
+            },
+        },
+    });
+    
+    const coursesBookingRepo = dataSource.getRepository(Courses_bookings);
+
+    //報名紀錄，用來整理課表
+    const foundCoursesBooking = await coursesBookingRepo.find({
+        where:{
+            users:{
+                id: getUserId
+            },
+        },
+        relations:{
+            courses: {
+                coaches: {
+                    user: true
+                },
+            },
+        },
+        order:{
+            courses:{
+                start_at: 'ASC'
+        },
+    },
+});
+
+    //計算個人的報購買紀錄的加總
+    const purchases_credits = foundPurchasesUser.reduce((acc,purchase)=> {
+        return acc + purchase.purchased_credits;
+    },0);
+
+    //計算個人已使用的堂數
+    const notCancelled = foundCoursesBooking.filter((used)=>{
+        return used.cancelled_at === null
+    });
+    const credit_usage = notCancelled.length;
+    
+    //計算剩餘堂數
+    const credit_remain = purchases_credits - credit_usage;
+
+    const course_booking = foundCoursesBooking.map((booking)=> {
+        return {
+            course_id: booking.courses.id,
+            name: booking.courses.name,
+            start_at: booking.courses.start_at,
+            end_at: booking.courses.end_at,
+            meeting_url: booking.courses.meeting_url,
+            coach_name: booking.courses.coaches.user.name,
+            cancelled_at: booking.cancelled_at
+        };
+    });
+
+    return res.status(200).json({
+        status: "success",
+        data: {
+            credit_remain : credit_remain,
+            credit_usage : credit_usage,
+            course_booking : course_booking
+        },
+    });
+};
+
 module.exports = {
     signupUsers,
     loginUsers,
     getUsersProfile,
     updateUsersProfile,
     updateUsersPassword,
-    getCreditPackageByUser
+    getCreditPackageByUser,
+    getCoursesByUser
 };
