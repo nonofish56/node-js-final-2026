@@ -4,15 +4,20 @@ const { dataSource } = require('../db/data-source.js')
 
 const Skill = require('../db/entities/Skill.js');
 const Coaches = require('../db/entities/Coaches.js');
+const users = require('../db/entities/Users.js');
+const Courses = require('../db/entities/Courses.js');
+const CoachesSkills = require('../db/entities/coaches_skills.js');
+const CourseBookings = require('../db/entities/Course_bookings.js');
+const Package = require('../db/entities/Package.js');
 
 const { validate } = require('uuid');
 const { MoreThan } = require('typeorm');
-const CoachesSkills = require('../db/entities/coaches_skills.js');
-
-const Courses = require('../db/entities/Courses.js');
-
 const { In } = require('typeorm');
-const Users = require('../db/entities/Users.js');
+const { MoreThanOrEqual } = require('typeorm');
+const { LessThan } = require('typeorm');
+const { And } = require('typeorm');
+const { IsNull } = require('typeorm');
+
 
 const getSkills = async(req,res) => {
     const SkillRepo = dataSource.getRepository(Skill);
@@ -297,6 +302,156 @@ const getCoachCourses = async(req,res) => {
     });
 };
 
+const getCoachRevenue = async(req,res) => {
+    const userId = req.user.id;
+    const userRole = req.user.role;
+
+    if(userRole !== "COACH"){
+        return res.status(401).json({
+            status: "failed",
+            message: "使用者尚未成為教練"
+        });
+    };
+
+    const month = req.query.month;
+    
+    if(!month || typeof month !== "string"){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+    
+    const valueMonth = [
+        "january","february",
+        "march","april","may",
+        "june","july","august",
+        "september","october","november","december"
+    ];
+
+    if(!valueMonth.includes(month)){
+        return res.status(400).json({
+            status: "failed",
+            message: "欄位未填寫正確"
+        });
+    };
+
+    const coachesRepo = dataSource.getRepository(Coaches);
+
+    //資料庫取得教練id符合使用者id
+    const foundOneCoach = await coachesRepo.findOne({
+        where:{
+            user_id: userId
+            },
+        },
+    );
+
+    const coursesRepo = dataSource.getRepository(Courses);
+
+    //資料庫取得教練id跟課程id相符的資料
+    const foundCourseCoachId = await coursesRepo.find({
+        where:{
+            coaches_id : foundOneCoach.id
+        },
+    });
+
+    if(foundCourseCoachId.length === 0){
+         return res.status(200).json({
+            status: "success",
+            data:{
+                total:{
+                    revenue: 0,
+                    participants: 0,
+                    course_count: 0
+                },
+            },
+        });
+    };
+
+    //英文月份轉換成數字索引
+    const monthIndexOf = valueMonth.indexOf(month);
+
+    //建立取得今天的年份
+    const thisYear = new Date().getFullYear();
+
+    //建立指定月份的起始時間
+    const startDate = new Date(thisYear,monthIndexOf,1);
+
+    //建立下個月的起始日期
+    const nextMonth = monthIndexOf + 1;
+    const nextDate = new Date(thisYear,nextMonth,1);
+
+    
+    const coursesBookingsRepo = dataSource.getRepository(CourseBookings);
+
+    //將foundCourseCoachId轉換資料結構
+    const changeCoursesId = foundCourseCoachId.map((courseId)=>{
+        return courseId.id
+    })
+
+    //查詢該教練的課程，報名建立時間落在指定月份，尚未取消的報名紀錄
+    const foundCoachesBookings = await coursesBookingsRepo.find({
+        where:{
+            courses:{
+                id: In(changeCoursesId)
+            },
+            created_at: And(
+                MoreThanOrEqual(startDate),
+                LessThan(nextDate),
+            ),
+            cancelled_at: IsNull()
+        },
+        relations:{
+            users: true
+        }
+    });
+    
+    const creditPackagesRepo = dataSource.getRepository(Package);
+
+    //計算該月未取消的報名比數
+    const course_count = foundCoachesBookings.length;
+
+    //計算該月不重複報名的學員數
+    const studentIds = foundCoachesBookings.map((student)=>{
+        return student.users.id
+    });
+    //去除重複值
+    const studentIdsSet = new Set(studentIds);
+
+    //不重複學員數的結果
+    const participants = studentIdsSet.size;
+    
+    //取得所有堂數方案
+    const getAllPackages = await creditPackagesRepo.find();
+
+    //加總所有方案的金額
+    const getAllPrice = getAllPackages.reduce((acc,item)=>{
+        return acc + Number(item.price)
+    },0);
+
+    //加總所有方案的堂數
+    const getAllCreditAmount = getAllPackages.reduce((acc,item)=>{
+        return acc + item.credit_amount  
+    },0);
+    
+    //計算單堂均數＝總價格/總堂數
+    const averagePrice = getAllPrice / getAllCreditAmount;
+
+    //計算營收
+    const revenue = Math.floor(course_count * averagePrice);
+    
+    return res.status(200).json({
+        status: "success",
+        data:{
+            total:{
+                revenue: revenue,
+                participants: participants,
+                course_count: course_count
+            },
+        },
+    });
+};
+    
 
 
 module.exports = { 
@@ -306,4 +461,5 @@ module.exports = {
     getCoachPage,
     getCoachById,
     getCoachCourses,
+    getCoachRevenue,
 };

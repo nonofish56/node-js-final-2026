@@ -25,6 +25,9 @@ const { getCoachCourseById } = require('../controllers/admin.js');
 //更新單一課程
 const { putCoachCourseById } = require('../controllers/admin.js');
 
+//取得教練本人指定月份的營收統計
+const { getCoachRevenue } = require('../controllers/coaches');
+
 
 router.post('/coaches/courses', verifyToken, postNewCourses);
 
@@ -37,6 +40,9 @@ router.post('/coaches/:userId', upgradeUserToCoach);
 router.get('/coaches', verifyToken, getOneCoachData);
 router.put('/coaches', verifyToken, updateCoachData);
 router.get('/coaches/courses', verifyToken, getCoachCourses);
+
+
+router.get('/coaches/revenue',verifyToken,getCoachRevenue);
 
 
 module.exports = router;
